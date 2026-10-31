@@ -1,0 +1,3 @@
+[submodule "Packages/PageKit"]
+	path = Packages/PageKit
+	url = https://github.com/frankthamel/PageKit.git
