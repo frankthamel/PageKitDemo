@@ -73,7 +73,7 @@ Sources/PageKit/
   PageKit.docc/  catalogue, 4 articles, 1 tutorial
 ```
 
-Dependency direction: `Paginator` depends on internal protocols for each external effect, and concrete types are injected through an internal initialiser used by tests. The public initialiser stays as in §6.
+Dependency direction: `Paginator` takes its effects through an internal environment value, injected by an internal initialiser used by tests. It holds the concrete `DiskPageStore` and `MemoryPageCache`, not protocols, as each has one implementation, plus the public `ConnectivityMonitoring` and closures for sleep and the clock. The public initialiser stays as in §6.
 
 ### Where the build resolves the Doc
 
@@ -191,7 +191,7 @@ PageKitDemo/PageKitDemo/
 
 Economist-like editorial structure in a retro palette: a masthead, a strong red block, a dense serif-led list, thin rules, kicker labels and a large lead story. Palette direction: cream paper, ink near-black, signal red, mustard and faded teal. Exact design is left to the builder using the frontend-design skill. It must not use The Economist's name, logo or wordmark. App name in UI: **The Orbital**.
 
-Images use `AsyncImage`. Mock articles have no remote images and use a typographic retro placeholder.
+Images use the app's `ImageLoader`, which replaced `AsyncImage` because full-size decoding hitched the live feed. It downsamples with ImageIO and caches in `NSCache`. Mock articles have no remote images and use a typographic retro placeholder.
 
 ### Tests
 
