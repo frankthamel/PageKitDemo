@@ -25,7 +25,11 @@ struct FeedScreen<Source: PageSource>: View where Source.Item == Article {
                     ArticleRow(article: article)
                         .onAppear { viewModel.itemAppeared(article) }
                 }
-                PageFooter(state: snapshot.state, onRetry: viewModel.retry)
+                PageFooter(
+                    state: snapshot.state,
+                    onLoadMore: viewModel.loadMore,
+                    onRetry: viewModel.retry
+                )
             }
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
@@ -57,7 +61,6 @@ struct FeedScreen<Source: PageSource>: View where Source.Item == Article {
         if let notice = FeedNotice(
             lastError: snapshot.lastError,
             isOffline: snapshot.isOffline,
-            state: snapshot.state,
             hasItems: !snapshot.items.isEmpty
         ) {
             OfflineBanner(notice: notice)

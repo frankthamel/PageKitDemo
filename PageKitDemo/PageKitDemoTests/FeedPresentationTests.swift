@@ -10,8 +10,8 @@ struct PageFooterContentTests {
         (.loadingFirstPage, .none),
         (.refreshing, .none),
         (.empty, .none),
-        (.loaded(hasMore: true), .none),
         (.failed(.server(status: 503), isFirstPage: true), .none),
+        (.loaded(hasMore: true), .loadMore),
         (.loadingNextPage, .loading),
         (.failed(.server(status: 503), isFirstPage: false), .retry),
         (.failed(.timedOut, isFirstPage: false), .retry),
@@ -23,6 +23,7 @@ struct PageFooterContentTests {
     }
 
     @Test func usesTheAgreedCopy() {
+        #expect(PageFooterContent.loadMore.message == "Load more")
         #expect(PageFooterContent.retry.message == "Couldn't load more. Tap to retry.")
         #expect(PageFooterContent.offline.message == "Connect to load more")
         #expect(PageFooterContent.endOfFeed.message == "You're all caught up")
@@ -56,27 +57,22 @@ struct FirstPageContentTests {
 
 struct FeedNoticeTests {
     @Test func isSilentWithNothingWrong() {
-        #expect(FeedNotice(lastError: nil, isOffline: false, state: .loaded(hasMore: true), hasItems: true) == nil)
+        #expect(FeedNotice(lastError: nil, isOffline: false, hasItems: true) == nil)
     }
 
     @Test func staysAwayFromAnEmptyScreen() {
-        #expect(FeedNotice(lastError: .timedOut, isOffline: true, state: .empty, hasItems: false) == nil)
+        #expect(FeedNotice(lastError: .timedOut, isOffline: true, hasItems: false) == nil)
     }
 
     @Test func reportsAFailedRefreshOverItems() {
-        let notice = FeedNotice(lastError: .timedOut, isOffline: false, state: .loaded(hasMore: true), hasItems: true)
+        let notice = FeedNotice(lastError: .timedOut, isOffline: false, hasItems: true)
         #expect(notice == .refreshFailed)
         #expect(notice?.message == "Couldn't refresh")
     }
 
     @Test func prefersTheOfflineMessageOverTheError() {
-        let notice = FeedNotice(lastError: .offline, isOffline: true, state: .loaded(hasMore: true), hasItems: true)
+        let notice = FeedNotice(lastError: .offline, isOffline: true, hasItems: true)
         #expect(notice == .offline)
-    }
-
-    @Test func leavesANextPageFailureToTheFooter() {
-        let state = PaginationState.failed(.timedOut, isFirstPage: false)
-        #expect(FeedNotice(lastError: .timedOut, isOffline: false, state: state, hasItems: true) == nil)
     }
 }
 

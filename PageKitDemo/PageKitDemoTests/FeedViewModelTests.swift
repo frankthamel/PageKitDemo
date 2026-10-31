@@ -45,6 +45,17 @@ struct FeedViewModelTests {
         #expect(await eventually { model.snapshot.items.count == 20 })
     }
 
+    @Test func loadMoreFetchesTheNextPage() async throws {
+        let model = makeModel()
+        let task = Task { await model.run() }
+        defer { task.cancel() }
+        #expect(await eventually { model.snapshot.items.count == 20 })
+
+        model.loadMore()
+
+        #expect(await eventually { model.snapshot.items.count == 40 })
+    }
+
     @Test func itemAppearedLoadsMore() async throws {
         let model = makeModel()
         let task = Task { await model.run() }

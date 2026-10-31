@@ -54,23 +54,24 @@ struct OrbitEmblem: View {
 
 /// Stands in for a story with no picture, or a picture that failed to load.
 struct RetroPlaceholder: View {
-    let display: ArticleDisplay
+    let swatch: Swatch
+    let monogram: String
 
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
             ZStack(alignment: .bottomLeading) {
-                display.swatch.color
+                swatch.color
                 OrbitEmblem(
-                    planet: display.swatch.markColor.opacity(0.14),
-                    ring: display.swatch.markColor.opacity(0.4),
-                    satellite: display.swatch.markColor
+                    planet: swatch.markColor.opacity(0.14),
+                    ring: swatch.markColor.opacity(0.4),
+                    satellite: swatch.markColor
                 )
                 .frame(width: side * 1.5, height: side * 1.5)
                 .position(x: proxy.size.width - side * 0.3, y: side * 0.3)
-                Text(display.monogram)
+                Text(monogram)
                     .font(.system(size: side * 0.5, weight: .black, design: .serif))
-                    .foregroundStyle(display.swatch.markColor)
+                    .foregroundStyle(swatch.markColor)
                     .padding(.leading, side * 0.1)
                     .padding(.bottom, side * 0.04)
             }
@@ -80,22 +81,23 @@ struct RetroPlaceholder: View {
     }
 }
 
-/// A story's picture at a fixed size, so a late image never moves the list.
+/// A story's picture at a fixed size, so a late image never moves the list. The placeholder
+/// shows only until the image arrives, so a loaded row doesn't draw both.
 struct ArticleImage: View {
     let url: URL?
-    let display: ArticleDisplay
+    let swatch: Swatch
+    let monogram: String
 
     var body: some View {
-        RetroPlaceholder(display: display)
+        Color.clear
             .overlay {
-                if let url {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .saturation(0.82)
-                        }
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        RetroPlaceholder(swatch: swatch, monogram: monogram)
                     }
                 }
             }
@@ -106,14 +108,15 @@ struct ArticleImage: View {
 
 /// The small dot and source name above a headline.
 struct Kicker: View {
-    let display: ArticleDisplay
+    let text: String
+    let swatch: Swatch
 
     var body: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(display.swatch.color)
+                .fill(swatch.color)
                 .frame(width: 8, height: 8)
-            Text(display.kicker)
+            Text(text)
                 .font(Typography.kicker)
                 .foregroundStyle(Palette.signalText)
                 .lineLimit(1)

@@ -1,11 +1,6 @@
 import Foundation
 import NewsClient
 
-/// One of the paper's three spot colours.
-nonisolated enum Swatch: CaseIterable, Hashable {
-    case signal, mustard, teal
-}
-
 /// What the lead story and the rows print for an article, worked out once in one place.
 nonisolated struct ArticleDisplay {
     /// The label above the headline.

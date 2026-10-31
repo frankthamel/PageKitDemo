@@ -26,6 +26,11 @@ enum Palette {
     static let onSignal = Color(hex: 0xFFF6E6)
 }
 
+/// One of the paper's three spot colours.
+nonisolated enum Swatch: CaseIterable, Hashable {
+    case signal, mustard, teal
+}
+
 extension Swatch {
     /// The fill for this swatch.
     var color: Color {

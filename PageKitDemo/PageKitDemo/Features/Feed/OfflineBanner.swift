@@ -5,13 +5,13 @@ import SwiftUI
 nonisolated enum FeedNotice: Equatable {
     case offline, refreshFailed
 
-    /// Returns `nil` when there is nothing to say. A next-page failure stays out of it,
-    /// because the footer already covers that where the reader is looking.
-    init?(lastError: PaginationError?, isOffline: Bool, state: PaginationState, hasItems: Bool) {
+    /// Returns `nil` when there is nothing to say. A next-page failure never gets here:
+    /// it shows in the footer and doesn't set `lastError`.
+    init?(lastError: PaginationError?, isOffline: Bool, hasItems: Bool) {
         guard hasItems else { return nil }
         if isOffline {
             self = .offline
-        } else if lastError != nil, PageFooterContent(state: state) != .retry {
+        } else if lastError != nil {
             self = .refreshFailed
         } else {
             return nil

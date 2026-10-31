@@ -44,6 +44,12 @@ final class FeedViewModel<Source: PageSource> {
         await Task { [paginator] in await paginator.refresh() }.value
     }
 
+    /// Loads the next page when asked. Scrolling normally does this by itself, but only
+    /// this can move past a blank page, because no row appears to trigger the load.
+    func loadMore() {
+        Task { await paginator.loadNextPage() }
+    }
+
     /// Tell the view model a row is on screen, so it can load ahead.
     func itemAppeared(_ item: Source.Item) {
         let id = item.id

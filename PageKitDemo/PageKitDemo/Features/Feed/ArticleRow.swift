@@ -3,16 +3,21 @@ import SwiftUI
 
 /// One story in the list. Tapping it opens the story in the system browser.
 struct ArticleRow: View {
-    let article: Article
+    private let article: Article
+    private let display: ArticleDisplay
     @ScaledMetric(relativeTo: .body) private var imageSide: CGFloat = 76
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    init(article: Article) {
+        self.article = article
+        display = ArticleDisplay(article)
+    }
+
     var body: some View {
-        let display = ArticleDisplay(article)
         Link(destination: article.url) {
             VStack(alignment: .leading, spacing: 6) {
-                header(display)
-                content(display)
+                header
+                content
             }
             .multilineTextAlignment(.leading)
             .padding(.horizontal, 16)
@@ -35,10 +40,10 @@ struct ArticleRow: View {
             : AnyLayout(HStackLayout(alignment: alignment, spacing: spacing))
     }
 
-    private func header(_ display: ArticleDisplay) -> some View {
+    private var header: some View {
         let layout = stack(spacing: isLarge ? 2 : 12, alignment: .firstTextBaseline)
         return layout {
-            Kicker(display: display)
+            Kicker(text: display.kicker, swatch: display.swatch)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(display.age)
                 .font(Typography.meta)
@@ -47,7 +52,7 @@ struct ArticleRow: View {
         }
     }
 
-    private func content(_ display: ArticleDisplay) -> some View {
+    private var content: some View {
         let layout = stack(spacing: 12, alignment: .top)
         return layout {
             VStack(alignment: .leading, spacing: 3) {
@@ -60,7 +65,7 @@ struct ArticleRow: View {
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            ArticleImage(url: article.imageURL, display: display)
+            ArticleImage(url: article.imageURL, swatch: display.swatch, monogram: display.monogram)
                 .frame(maxWidth: isLarge ? .infinity : imageSide)
                 .frame(height: imageSide)
         }
