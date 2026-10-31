@@ -7,13 +7,15 @@ import SwiftUI
 struct FeedScreen<Source: PageSource>: View where Source.Item == Article {
     let title: String
     let viewModel: FeedViewModel<Source>
+    /// Opens the simulator panel. The masthead shows its button only when this is set.
+    var onOpenSimulator: (() -> Void)?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let snapshot = viewModel.snapshot
         ScrollView {
             LazyVStack(spacing: 0) {
-                Masthead(section: title)
+                Masthead(section: title, onOpenSimulator: onOpenSimulator)
                 Rule(weight: 3, color: Palette.ink)
                 if let lead = snapshot.items.first {
                     LeadArticleCard(article: lead)
@@ -71,6 +73,7 @@ struct FeedScreen<Source: PageSource>: View where Source.Item == Article {
 /// The nameplate: the paper's red block, with the section and today's date under the title.
 private struct Masthead: View {
     let section: String
+    let onOpenSimulator: (() -> Void)?
     @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 46
 
     var body: some View {
@@ -112,6 +115,21 @@ private struct Masthead: View {
         .background(Palette.signal)
         .clipped()
         .accessibilityElement(children: .combine)
+        .overlay(alignment: .topTrailing) { simulatorButton }
+    }
+
+    @ViewBuilder
+    private var simulatorButton: some View {
+        if let onOpenSimulator {
+            Button(action: onOpenSimulator) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Palette.onSignal)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Simulator")
+            .accessibilityIdentifier("simulator.open")
+        }
     }
 
     private var sectionName: some View {
