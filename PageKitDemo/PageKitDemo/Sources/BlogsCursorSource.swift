@@ -5,8 +5,14 @@ import PageKit
 /// page, and no cursor means the end.
 nonisolated struct BlogsCursorSource: PageSource {
     let service: any NewsService
-    let feedID = "news.blogs"
+    let feedID: String
     let firstToken = CursorToken(value: nil, size: 20)
+
+    /// Creates the source. `feedID` names its cache, so give each service its own.
+    init(service: any NewsService, feedID: String = "news.blogs") {
+        self.service = service
+        self.feedID = feedID
+    }
 
     func loadPage(_ token: CursorToken) async throws -> Page<Article, CursorToken> {
         let page = try await mappingHTTPErrors {

@@ -15,7 +15,6 @@ final class AppEnvironment {
 
     /// The two feeds on screen, built together so they always share a mode.
     struct Feeds {
-        let id = UUID()
         let articles: FeedViewModel<ArticlesIndexSource>
         let blogs: FeedViewModel<BlogsCursorSource>
     }
@@ -25,59 +24,78 @@ final class AppEnvironment {
 
     /// The current source of stories.
     private(set) var mode: Mode
+    /// The service for the current mode. The live one is only built once live mode is used.
+    private(set) var service: any NewsService
     /// The simulated service. The simulator panel steers it.
     let mock: MockNewsService
     /// The feeds for the current mode, or `nil` for the moment a mode switch is under way.
     private(set) var feeds: Feeds?
+    /// Whether a mode switch is under way. A second switch is ignored until it ends.
+    private(set) var isSwitching = false
 
-    private let live: any NewsService
-    private let clearCaches: @MainActor () async -> Void
-
-    /// The service for the current mode.
-    var service: any NewsService {
-        switch mode {
-        case .live: live
-        case .mock: mock
-        }
-    }
+    private let makeLive: () -> any NewsService
+    private let clearAllCaches: @MainActor () async -> Void
 
     /// Creates the environment.
     /// - Parameters:
     ///   - arguments: Launch arguments. `-mock` starts in mock mode.
-    ///   - live: The real service.
-    ///   - mock: The simulated service.
     ///   - clearCaches: Empties PageKit's caches. Replaced in tests.
+    ///   - makeLive: Builds the real service, only when live mode is used.
+    ///   - mock: The simulated service.
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
-        live: any NewsService = LiveNewsService(),
-        mock: MockNewsService = MockNewsService(),
-        clearCaches: @escaping @MainActor () async -> Void = { await PageKit.clearAll() }
+        clearCaches: @escaping @MainActor () async -> Void = { await PageKit.clearAll() },
+        makeLive: @escaping () -> any NewsService = { LiveNewsService() },
+        mock: MockNewsService = MockNewsService()
     ) {
-        self.mode = arguments.contains(Self.mockLaunchArgument) ? .mock : .live
-        self.live = live
+        let mode: Mode = arguments.contains(Self.mockLaunchArgument) ? .mock : .live
+        self.mode = mode
+        self.makeLive = makeLive
         self.mock = mock
-        self.clearCaches = clearCaches
+        self.service = mode == .live ? makeLive() : mock
+        self.clearAllCaches = clearCaches
         self.feeds = makeFeeds()
+    }
+
+    /// A fresh Articles source on the current service. Its feed ID names the mode, so
+    /// live and mock pages can never share a cache.
+    func makeArticlesSource() -> ArticlesIndexSource {
+        ArticlesIndexSource(service: service, feedID: "news.articles.\(mode.rawValue)")
+    }
+
+    /// A fresh Blogs source on the current service, with a feed ID that names the mode.
+    func makeBlogsSource() -> BlogsCursorSource {
+        BlogsCursorSource(service: service, feedID: "news.blogs.\(mode.rawValue)")
     }
 
     /// A fresh Articles feed on the current service.
     func makeArticlesFeed() -> FeedViewModel<ArticlesIndexSource> {
-        FeedViewModel(source: ArticlesIndexSource(service: service))
+        FeedViewModel(source: makeArticlesSource())
     }
 
     /// A fresh Blogs feed on the current service.
     func makeBlogsFeed() -> FeedViewModel<BlogsCursorSource> {
-        FeedViewModel(source: BlogsCursorSource(service: service))
+        FeedViewModel(source: makeBlogsSource())
     }
 
-    /// Switches between live and mock data. Live and mock share feed IDs, so the old
-    /// feeds are released first, the caches are emptied and awaited, and only then are
-    /// new feeds built. No page from one mode can reach the other.
+    /// Empties PageKit's memory and disk caches.
+    func clearCaches() async {
+        await clearAllCaches()
+    }
+
+    /// Switches between live and mock data.
+    ///
+    /// Each mode caches under its own feed IDs, so the two can't mix even if an old
+    /// paginator is slow to stop. The old feeds are also released first, which cancels
+    /// them, and the caches are cleared, so the new mode starts from a clean slate.
     func switchMode(to newMode: Mode) async {
-        guard newMode != mode, feeds != nil else { return }
+        guard newMode != mode, !isSwitching else { return }
+        isSwitching = true
+        defer { isSwitching = false }
         feeds = nil   // releases the old view models, whose deinit cancels their paginators
         await clearCaches()
         mode = newMode
+        service = newMode == .live ? makeLive() : mock
         feeds = makeFeeds()
     }
 

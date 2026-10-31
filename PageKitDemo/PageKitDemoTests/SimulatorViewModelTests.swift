@@ -12,9 +12,19 @@ struct SimulatorViewModelTests {
         func record(_ settings: SimulationSettings) { applied.append(settings) }
     }
 
-    private func makeModel() -> (SimulatorViewModel, Recorder) {
+    private final class Calls {
+        var cacheClears = 0
+        var memoryClears = 0
+    }
+
+    private func makeModel(calls: Calls = Calls()) -> (SimulatorViewModel, Recorder) {
         let recorder = Recorder()
-        return (SimulatorViewModel { await recorder.record($0) }, recorder)
+        let model = SimulatorViewModel(
+            apply: { await recorder.record($0) },
+            clearCaches: { calls.cacheClears += 1 },
+            clearMemoryCache: { calls.memoryClears += 1 }
+        )
+        return (model, recorder)
     }
 
     @Test func slidersUpdateMockService() async {
@@ -29,7 +39,7 @@ struct SimulatorViewModelTests {
 
     @Test func slidersReachARealMockService() async {
         let mock = MockNewsService(articlesPerSection: 10)
-        let model = SimulatorViewModel(mock: mock)
+        let model = SimulatorViewModel(mock: mock) { }
 
         model.isOffline = true
 
@@ -50,22 +60,39 @@ struct SimulatorViewModelTests {
         #expect(await eventually { await recorder.applied.last == .chaos })
     }
 
-    @Test func simulateMemoryWarningKeepsItems() async throws {
+    @Test func simulateMemoryWarningClearsOnlyTheMemoryCache() async {
+        let calls = Calls()
+        let (model, _) = makeModel(calls: calls)
+
+        model.simulateMemoryWarning()
+
+        #expect(calls.memoryClears == 1)
+        #expect(calls.cacheClears == 0)
+    }
+
+    @Test func simulateMemoryWarningKeepsItems() async {
         let source = ArticlesIndexSource(service: MockNewsService(articlesPerSection: 100))
-        var configuration = PaginationConfiguration()
-        configuration.cachePolicy = .networkOnly
-        let feed = FeedViewModel(source: source, configuration: configuration)
+        let feed = FeedViewModel(source: source, configuration: PaginationConfiguration())
         let task = Task { await feed.run() }
         defer { task.cancel() }
         #expect(await eventually { feed.snapshot.items.count == 20 })
+        let calls = Calls()
+        let (model, _) = makeModel(calls: calls)
 
-        SimulatorViewModel { _ in }.simulateMemoryWarning()
+        model.simulateMemoryWarning()
 
+        #expect(calls.memoryClears == 1)
         #expect(feed.snapshot.items.count == 20)
     }
 
-    @Test func clearCachesFinishes() async {
-        await SimulatorViewModel { _ in }.clearCaches()
+    @Test func clearCachesRunsTheInjectedClear() async {
+        let calls = Calls()
+        let (model, _) = makeModel(calls: calls)
+
+        await model.clearCaches()
+
+        #expect(calls.cacheClears == 1)
+        #expect(calls.memoryClears == 0)
     }
 }
 

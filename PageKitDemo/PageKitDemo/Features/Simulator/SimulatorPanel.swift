@@ -6,7 +6,6 @@ struct SimulatorPanel: View {
     let environment: AppEnvironment
     @Bindable var model: SimulatorViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var isSwitching = false
 
     private var isMock: Bool { environment.mode == .mock }
 
@@ -52,9 +51,9 @@ struct SimulatorPanel: View {
                 Text("Mock").tag(AppEnvironment.Mode.mock)
             }
             .pickerStyle(.segmented)
-            .disabled(isSwitching)
+            .disabled(environment.isSwitching)
             .accessibilityIdentifier("simulator.mode")
-            if isSwitching {
+            if environment.isSwitching {
                 Text("Clearing caches and rebuilding the feeds…").font(Typography.notice)
             }
         }
@@ -62,7 +61,7 @@ struct SimulatorPanel: View {
 
     private var networkControls: some View {
         VStack(alignment: .leading, spacing: 16) {
-            slider("Latency", value: $model.latency, range: 0...3, label: "up to \(model.latency.formatted(.number.precision(.fractionLength(1)))) s", id: "simulator.latency")
+            slider("Latency", value: $model.latency, range: 0...3, label: model.latency == 0 ? "None" : "up to \(model.latency.formatted(.number.precision(.fractionLength(1)))) s", id: "simulator.latency")
             slider("Failure rate", value: $model.failureRate, range: 0...1, label: model.failureRate.formatted(.percent.precision(.fractionLength(0))), id: "simulator.failure")
             Toggle("Offline", isOn: $model.isOffline)
                 .font(Typography.headline)
@@ -93,7 +92,7 @@ struct SimulatorPanel: View {
             Rule(weight: 1.5, color: Palette.ink)
             content()
             if let note {
-                Text(note).font(Typography.notice).foregroundStyle(Palette.inkSoft)
+                Text(note).font(Typography.notice)
             }
         }
         .foregroundStyle(Palette.ink)
@@ -104,7 +103,7 @@ struct SimulatorPanel: View {
             HStack {
                 Text(title).font(Typography.headline)
                 Spacer()
-                Text(label).font(Typography.meta).monospacedDigit().foregroundStyle(Palette.inkSoft)
+                Text(label).font(Typography.meta.weight(.semibold)).monospacedDigit().foregroundStyle(Palette.ink)
             }
             Slider(value: value, in: range)
                 .tint(Palette.signal)
@@ -131,11 +130,7 @@ struct SimulatorPanel: View {
         Binding(
             get: { environment.mode },
             set: { newMode in
-                isSwitching = true
-                Task {
-                    await environment.switchMode(to: newMode)
-                    isSwitching = false
-                }
+                Task { await environment.switchMode(to: newMode) }
             }
         )
     }

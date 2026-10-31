@@ -14,16 +14,30 @@ final class SimulatorViewModel {
     var isOffline = false { didSet { push() } }
 
     private let apply: @Sendable (SimulationSettings) async -> Void
-    private var lastPush: Task<Void, Never>?
+    private let clearAllCaches: @MainActor () async -> Void
+    private let clearMemory: @MainActor () -> Void
+    private var pending: SimulationSettings?
+    private var isPushing = false
 
-    /// Creates a view model that hands each new set of settings to `apply`.
-    init(apply: @escaping @Sendable (SimulationSettings) async -> Void) {
+    /// Creates a view model.
+    /// - Parameters:
+    ///   - apply: Receives each new set of settings, in order. A burst of changes may be
+    ///     collapsed into its last value.
+    ///   - clearCaches: Empties the memory and disk caches.
+    ///   - clearMemoryCache: Empties the memory cache only.
+    init(
+        apply: @escaping @Sendable (SimulationSettings) async -> Void,
+        clearCaches: @escaping @MainActor () async -> Void,
+        clearMemoryCache: @escaping @MainActor () -> Void = { PageKit.clearMemoryCache() }
+    ) {
         self.apply = apply
+        self.clearAllCaches = clearCaches
+        self.clearMemory = clearMemoryCache
     }
 
     /// Creates a view model that steers `mock`.
-    convenience init(mock: MockNewsService) {
-        self.init { await mock.update($0) }
+    convenience init(mock: MockNewsService, clearCaches: @escaping @MainActor () async -> Void) {
+        self.init(apply: { await mock.update($0) }, clearCaches: clearCaches)
     }
 
     /// Sets the rough-network preset: slow and flaky, but online.
@@ -36,27 +50,31 @@ final class SimulatorViewModel {
 
     /// Empties the memory and disk caches, so the next load goes to the network.
     func clearCaches() async {
-        await PageKit.clearAll()
+        await clearAllCaches()
     }
 
     /// Empties the memory cache only, as the system does under memory pressure.
     /// Items already on screen stay.
     func simulateMemoryWarning() {
-        PageKit.clearMemoryCache()
+        clearMemory()
     }
 
     private var settings: SimulationSettings {
         SimulationSettings(maxLatency: latency, failureRate: failureRate, isOffline: isOffline)
     }
 
-    /// Sends settings one after another, so a slow call can't land after a newer one.
+    /// Sends settings one at a time, in order. While one is in flight, newer values replace
+    /// each other, so dragging a slider never builds a queue.
     private func push() {
-        let previous = lastPush
-        let settings = settings
-        let apply = apply
-        lastPush = Task {
-            await previous?.value
-            await apply(settings)
+        pending = settings
+        guard !isPushing else { return }
+        isPushing = true
+        Task {
+            while let next = pending {
+                pending = nil
+                await apply(next)
+            }
+            isPushing = false
         }
     }
 }

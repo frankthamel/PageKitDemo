@@ -8,8 +8,14 @@ import PageKit
 /// is called from the paginator's own task.
 nonisolated struct ArticlesIndexSource: PageSource {
     let service: any NewsService
-    let feedID = "news.articles"
+    let feedID: String
     let firstToken = IndexToken.first(size: 20)
+
+    /// Creates the source. `feedID` names its cache, so give each service its own.
+    init(service: any NewsService, feedID: String = "news.articles") {
+        self.service = service
+        self.feedID = feedID
+    }
 
     func loadPage(_ token: IndexToken) async throws -> Page<Article, IndexToken> {
         let page = try await mappingHTTPErrors {

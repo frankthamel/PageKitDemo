@@ -123,8 +123,11 @@ private struct Masthead: View {
         if let onOpenSimulator {
             Button(action: onOpenSimulator) {
                 Image(systemName: "slider.horizontal.3")
-                    .font(.body.weight(.semibold))
+                    .font(.footnote.weight(.bold))
                     .foregroundStyle(Palette.onSignal)
+                    .frame(width: 32, height: 32)
+                    .background(Palette.signal, in: Circle())   // keeps the icon clear of the planet
+                    .overlay(Circle().stroke(Palette.onSignal, lineWidth: 1.5))
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Simulator")
