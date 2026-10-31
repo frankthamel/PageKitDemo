@@ -12,7 +12,10 @@ struct PageKitDemoApp: App {
     init() {
         let environment = AppEnvironment()
         _environment = State(initialValue: environment)
-        _simulator = State(initialValue: SimulatorViewModel(mock: environment.mock) { await environment.clearCaches() })
+        _simulator = State(initialValue: SimulatorViewModel(
+            mock: environment.mock,
+            connectivity: environment.simulatedConnectivity
+        ) { await environment.clearCaches() })
     }
 
     var body: some Scene {

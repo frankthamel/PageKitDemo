@@ -28,6 +28,8 @@ final class AppEnvironment {
     private(set) var service: any NewsService
     /// The simulated service. The simulator panel steers it.
     let mock: MockNewsService
+    /// The network status mock feeds follow. The simulator's Offline switch sets it.
+    let simulatedConnectivity = SimulatedConnectivity()
     /// The feeds for the current mode, or `nil` for the moment a mode switch is under way.
     private(set) var feeds: Feeds?
     /// Whether a mode switch is under way. A second switch is ignored until it ends.
@@ -70,12 +72,12 @@ final class AppEnvironment {
 
     /// A fresh Articles feed on the current service.
     func makeArticlesFeed() -> FeedViewModel<ArticlesIndexSource> {
-        FeedViewModel(source: makeArticlesSource())
+        makeFeed(source: makeArticlesSource())
     }
 
     /// A fresh Blogs feed on the current service.
     func makeBlogsFeed() -> FeedViewModel<BlogsCursorSource> {
-        FeedViewModel(source: makeBlogsSource())
+        makeFeed(source: makeBlogsSource())
     }
 
     /// Empties PageKit's memory and disk caches.
@@ -97,6 +99,11 @@ final class AppEnvironment {
         mode = newMode
         service = newMode == .live ? makeLive() : mock
         feeds = makeFeeds()
+    }
+
+    private func makeFeed<Source: PageSource>(source: Source) -> FeedViewModel<Source> {
+        let connectivity: any ConnectivityMonitoring = mode == .mock ? simulatedConnectivity : NetworkPathMonitor()
+        return FeedViewModel(paginator: Paginator(source: source, connectivity: connectivity))
     }
 
     private func makeFeeds() -> Feeds {

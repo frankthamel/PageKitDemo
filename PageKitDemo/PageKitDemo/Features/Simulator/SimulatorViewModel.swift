@@ -35,9 +35,20 @@ final class SimulatorViewModel {
         self.clearMemory = clearMemoryCache
     }
 
-    /// Creates a view model that steers `mock`.
-    convenience init(mock: MockNewsService, clearCaches: @escaping @MainActor () async -> Void) {
-        self.init(apply: { await mock.update($0) }, clearCaches: clearCaches)
+    /// Creates a view model that steers `mock`. `connectivity` hears about the Offline
+    /// switch after the mock does, because feeds retry the moment they hear of a reconnect.
+    convenience init(
+        mock: MockNewsService,
+        connectivity: SimulatedConnectivity,
+        clearCaches: @escaping @MainActor () async -> Void
+    ) {
+        self.init(
+            apply: { settings in
+                await mock.update(settings)
+                connectivity.setOnline(!settings.isOffline)
+            },
+            clearCaches: clearCaches
+        )
     }
 
     /// Sets the rough-network preset: slow and flaky, but online.

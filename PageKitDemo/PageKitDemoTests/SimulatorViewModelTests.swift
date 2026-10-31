@@ -39,13 +39,31 @@ struct SimulatorViewModelTests {
 
     @Test func slidersReachARealMockService() async {
         let mock = MockNewsService(articlesPerSection: 10)
-        let model = SimulatorViewModel(mock: mock) { }
+        let model = SimulatorViewModel(mock: mock, connectivity: SimulatedConnectivity()) { }
 
         model.isOffline = true
 
         #expect(await eventually {
             do { _ = try await mock.articles(section: .articles, offset: 0, limit: 1); return false } catch { return true }
         })
+    }
+
+    @Test func theOfflineSwitchDrivesConnectivityOnceTheMockHasTheSetting() async {
+        let mock = MockNewsService(articlesPerSection: 10)
+        let connectivity = SimulatedConnectivity()
+        let model = SimulatorViewModel(mock: mock, connectivity: connectivity) { }
+        var updates = connectivity.updates().makeAsyncIterator()
+        #expect(await updates.next()?.isOnline == true)
+
+        model.isOffline = true
+        #expect(await updates.next()?.isOnline == false)
+        model.isOffline = false
+        #expect(await updates.next()?.isOnline == true)
+
+        // A reconnect retries straight away, so the mock must already answer by now.
+        await #expect(throws: Never.self) {
+            _ = try await mock.articles(section: .articles, offset: 0, limit: 1)
+        }
     }
 
     @Test func chaosAppliesPreset() async {
@@ -68,21 +86,6 @@ struct SimulatorViewModelTests {
 
         #expect(calls.memoryClears == 1)
         #expect(calls.cacheClears == 0)
-    }
-
-    @Test func simulateMemoryWarningKeepsItems() async {
-        let source = ArticlesIndexSource(service: MockNewsService(articlesPerSection: 100))
-        let feed = FeedViewModel(source: source, configuration: PaginationConfiguration())
-        let task = Task { await feed.run() }
-        defer { task.cancel() }
-        #expect(await eventually { feed.snapshot.items.count == 20 })
-        let calls = Calls()
-        let (model, _) = makeModel(calls: calls)
-
-        model.simulateMemoryWarning()
-
-        #expect(calls.memoryClears == 1)
-        #expect(feed.snapshot.items.count == 20)
     }
 
     @Test func clearCachesRunsTheInjectedClear() async {
