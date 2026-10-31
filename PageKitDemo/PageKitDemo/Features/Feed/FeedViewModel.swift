@@ -38,10 +38,10 @@ final class FeedViewModel<Source: PageSource> {
         }
     }
 
-    /// Runs in its own task, which `.refreshable` can't cancel. Cancelling the caller of
-    /// a paginator load aborts that load, and a refresh is what makes SwiftUI cancel.
+    /// Reloads from page 1. The load belongs to the paginator, so `.refreshable` cancelling
+    /// its task doesn't stop it.
     func refresh() async {
-        await Task { [paginator] in await paginator.refresh() }.value
+        await paginator.refresh()
     }
 
     /// Loads the next page when asked. Scrolling normally does this by itself, but only
