@@ -136,10 +136,23 @@ metrics. On a simulator these report only how long scrolling took, not hitches, 
 on a device. Any hitch baseline should be recorded on a device, locally. It isn't enforced in CI,
 because hosted runners are too noisy.
 
-### Known limitation: images
+### Images
 
-Rows use `AsyncImage`, which decodes full-size images. A frame-timing probe on an iPhone 16e
-simulator measured about 81 ms of hitches per second of scrolling on the live feed, with single
-stalls over a second. The same feed without images measured about 12 ms/s. A simulator is not a
-device, so treat these as a comparison, not as real-world numbers. They do show images are the
-main cost.
+`AsyncImage` decodes every picture at full size, which stalled scrolling on the live feed. Rows
+now use `ImageLoader`, a small pipeline in the app. It fetches off the main actor, shrinks each
+picture to its display size with ImageIO, caches the result in an `NSCache`, and stops when a row
+leaves the screen.
+
+Hitches on the live feed, measured with a temporary frame-timing probe: 25 fast swipes through 160
+items from a clean install.
+
+| Rows use | Hitches (ms per second) | Worst frame |
+| --- | --- | --- |
+| `AsyncImage` | 79-83 | 1,225-1,236 ms |
+| `ImageLoader` | 12.7-17.0 | 61-114 ms |
+| No images at all | 12.0-12.2 | 60-61 ms |
+
+**These are simulator numbers** from an iPhone 16e simulator on a Mac, over three runs (two for no
+images). Use them as a comparison, not as device figures. They see main-thread frame timing only,
+and they include the pauses between swipes. Image cost is now close to the no-image floor, but
+hitches have not been measured on a device.

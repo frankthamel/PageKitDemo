@@ -18,7 +18,7 @@ final class PageKitDemoUITests: XCTestCase {
 
     /// The real feed, with real images. It needs the network, so it skips itself when the
     /// feed can't load. A simulator reports scroll durations only, not hitches, so run this
-    /// on a device to judge `AsyncImage`.
+    /// on a device to judge image cost.
     func testLiveFeedScrollPerformance() throws {
         let app = launch(arguments: [])
         guard firstRow(in: app).waitForExistence(timeout: 20) else {
@@ -98,6 +98,7 @@ final class PageKitDemoUITests: XCTestCase {
         if (toggle.value as? String == "1") != isOffline {
             toggle.switches.firstMatch.tap()
         }
+        XCTAssertEqual(toggle.value as? String, isOffline ? "1" : "0")
         element("simulator.close", in: app).tap()
     }
 
