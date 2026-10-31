@@ -21,6 +21,7 @@ nonisolated final class ImageLoader: Sendable {
     /// The image at `url`, just large enough to fill `pixelSize`. It is never enlarged.
     ///
     /// Cancelling stops the work, so a row that scrolls away stops paying for its image.
+    /// A decode that has finished is cached anyway, as the row may well scroll back.
     /// `@concurrent` matters: without it this would run on the caller, the main actor.
     @concurrent func image(for url: URL, filling pixelSize: CGSize) async throws -> UIImage {
         let key = "\(url.absoluteString)|\(Int(pixelSize.width))x\(Int(pixelSize.height))" as NSString
@@ -29,7 +30,6 @@ nonisolated final class ImageLoader: Sendable {
         let data = try await fetch(url)
         try Task.checkCancellation()
         let image = try Self.downsample(data, filling: pixelSize)
-        try Task.checkCancellation()
         let cost = (image.cgImage?.bytesPerRow ?? 0) * (image.cgImage?.height ?? 0)
         cache.setObject(image, forKey: key, cost: cost)
         return image

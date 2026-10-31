@@ -19,6 +19,7 @@ struct FeedScreen<Source: PageSource>: View where Source.Item == Article {
                 Rule(weight: 3, color: Palette.ink)
                 if let lead = snapshot.items.first {
                     LeadArticleCard(article: lead)
+                        .id(lead.id)    // a new lead story must not inherit the last one's picture
                         .onAppear { viewModel.itemAppeared(lead) }
                     Rule(weight: 3, color: Palette.ink)
                     Rule(weight: 0.5, color: Palette.ink).padding(.top, 2)
@@ -165,7 +166,7 @@ private struct DebugFooter: View {
             Text(tokenStyle).fontWeight(.semibold)
             Text(itemsLoaded).monospacedDigit()
             Spacer(minLength: 0)
-            if isStale { Text("Updating…").italic() }
+            if isStale { Text("Saved copy").italic() }
         }
         .font(Typography.meta)
         .foregroundStyle(Palette.inkSoft)

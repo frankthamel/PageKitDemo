@@ -123,7 +123,11 @@ struct ArticleImage: View {
 
     /// SwiftUI cancels this when the row leaves the screen, which stops the loader too.
     private func load() async {
-        guard let url, pixelSize != .zero else { return }
+        guard let url else {
+            image = nil
+            return
+        }
+        guard pixelSize != .zero else { return }
         let loaded = try? await ImageLoader.shared.image(for: url, filling: pixelSize)
         guard !Task.isCancelled else { return }
         image = loaded
