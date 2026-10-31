@@ -12,5 +12,6 @@ let package = Package(
         .target(name: "NewsClient"),
         .target(name: "NewsClientLive", dependencies: ["NewsClient"]),
         .testTarget(name: "NewsClientTests", dependencies: ["NewsClient"]),
+        .testTarget(name: "NewsClientLiveTests", dependencies: ["NewsClientLive", "NewsClient"]),
     ]
 )
