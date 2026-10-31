@@ -7,19 +7,22 @@ import PageKit
 final class FeedViewModel<Source: PageSource> {
     /// Everything the screen needs, as one value, so each page causes one render.
     private(set) var snapshot = PaginationSnapshot<Source.Item>.initial
-    /// How many pages the list has grown by. Shown in the debug footer.
-    private var pagesLoaded = 0
     private let paginator: Paginator<Source>
 
     /// Which kind of token drives this feed, for the debug footer.
     var tokenStyleLabel: String { String(describing: Source.Token.self) }
 
-    /// How many pages are on screen, for the debug footer.
-    var pagesLoadedLabel: String { pagesLoaded == 1 ? "1 page loaded" : "\(pagesLoaded) pages loaded" }
+    /// How many items are on screen, for the debug footer.
+    var itemsLoadedLabel: String { "\(snapshot.items.count) items" }
 
     /// Creates a view model. Nothing loads until `run()`.
-    init(source: Source, configuration: PaginationConfiguration = .init()) {
-        paginator = Paginator(source: source, configuration: configuration)
+    convenience init(source: Source, configuration: PaginationConfiguration = .init()) {
+        self.init(paginator: Paginator(source: source, configuration: configuration))
+    }
+
+    /// Creates a view model around a paginator you already have.
+    init(paginator: Paginator<Source>) {
+        self.paginator = paginator
     }
 
     deinit {
@@ -31,7 +34,6 @@ final class FeedViewModel<Source: PageSource> {
     func run() async {
         await paginator.start()
         for await snapshot in paginator.snapshots() {
-            updatePagesLoaded(for: snapshot)
             self.snapshot = snapshot
         }
     }
@@ -56,14 +58,5 @@ final class FeedViewModel<Source: PageSource> {
     /// Pauses read-ahead while the app is in the background.
     func sceneBecameActive(_ isActive: Bool) {
         Task { await paginator.setAppActive(isActive) }
-    }
-
-    private func updatePagesLoaded(for new: PaginationSnapshot<Source.Item>) {
-        let count = new.items.count
-        if count > snapshot.items.count {
-            pagesLoaded = snapshot.items.isEmpty ? 1 : pagesLoaded + 1
-        } else if count < snapshot.items.count {
-            pagesLoaded = count == 0 ? 0 : 1
-        }
     }
 }

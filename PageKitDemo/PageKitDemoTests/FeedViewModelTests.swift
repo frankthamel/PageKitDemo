@@ -28,7 +28,7 @@ struct FeedViewModelTests {
         #expect(await eventually { model.snapshot.items.count == 20 })
         #expect(model.snapshot.state == .loaded(hasMore: true))
         #expect(model.tokenStyleLabel == "IndexToken")
-        #expect(model.pagesLoadedLabel == "1 page loaded")
+        #expect(model.itemsLoadedLabel == "20 items")
     }
 
     @Test func viewModelRetryRecoversAfterFailure() async throws {
@@ -53,8 +53,10 @@ struct FeedViewModelTests {
 
         model.itemAppeared(try #require(model.snapshot.items.last))
 
-        #expect(await eventually { model.snapshot.items.count >= 40 })
-        #expect(model.pagesLoadedLabel.hasPrefix("2 pages") || model.pagesLoadedLabel.hasPrefix("3 pages"))
+        #expect(await eventually { model.snapshot.items.count == 40 })
+        // Give any extra, unwanted load time to show up before checking again.
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(model.snapshot.items.count == 40)
     }
 
     @Test func sameViewModelDrivesBothStyles() async throws {
