@@ -88,21 +88,45 @@ struct ArticleImage: View {
     let swatch: Swatch
     let monogram: String
 
+    /// What to load. A change of either value starts a new load.
+    private struct Request: Equatable {
+        let url: URL?
+        let pixelSize: CGSize
+    }
+
+    @Environment(\.displayScale) private var displayScale
+    @State private var size = CGSize.zero
+    @State private var image: UIImage?
+
     var body: some View {
         Color.clear
             .overlay {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        RetroPlaceholder(swatch: swatch, monogram: monogram)
-                    }
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    RetroPlaceholder(swatch: swatch, monogram: monogram)
                 }
             }
             .clipped()
             .accessibilityHidden(true)
+            .onGeometryChange(for: CGSize.self, of: \.size) { size = $0 }
+            .task(id: Request(url: url, pixelSize: pixelSize)) {
+                await load()
+            }
+    }
+
+    private var pixelSize: CGSize {
+        CGSize(width: size.width * displayScale, height: size.height * displayScale)
+    }
+
+    /// SwiftUI cancels this when the row leaves the screen, which stops the loader too.
+    private func load() async {
+        guard let url, pixelSize != .zero else { return }
+        let loaded = try? await ImageLoader.shared.image(for: url, filling: pixelSize)
+        guard !Task.isCancelled else { return }
+        image = loaded
     }
 }
 
